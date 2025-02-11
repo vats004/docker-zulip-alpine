@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.20.2
 
 # export MUSL_LOCALE_DEPS="cmake make musl-dev gcc gettext-dev libintl" && \
 # export MUSL_LOCPATH="/usr/share/i18n/locales/musl" && \
@@ -57,9 +57,9 @@ WORKDIR /home/zulip
 # ARG ZULIP_GIT_URL=https://github.com/zulip/zulip.git
 # ARG ZULIP_GIT_REF=9.3
 
-# RUN git clone "$ZULIP_GIT_URL" && \
-#     cd zulip && \
-#     git checkout -b current "$ZULIP_GIT_REF"
+# RUN git clone https://github.com/zulip/zulip.git && \
+    # cd zulip && \
+    # git checkout -b current 9.3
 
 RUN exit     
 RUN chown -R zulip:zulip /home/zulip/zulip
@@ -73,9 +73,51 @@ ARG CUSTOM_CA_CERTIFICATES
 # RUN SKIP_VENV_SHELL_WARNING=1 ./tools/provision --build-release-tarball-only
 
 
+RUN export MUSL_LOCALE_DEPS="cmake make musl-dev gcc gettext-dev libintl" && \
+    export MUSL_LOCPATH="/usr/share/i18n/locales/musl" && \
+    apk add --no-cache $MUSL_LOCALE_DEPS && \
+    wget https://gitlab.com/rilian-la-te/musl-locales/-/archive/master/musl-locales-master.zip && \
+    unzip musl-locales-master.zip && \
+    cd musl-locales-master && \
+    cmake -DLOCALE_PROFILE=OFF -D CMAKE_INSTALL_PREFIX:PATH=/usr . && \
+    make && make install && \
+    cd .. && rm -r musl-locales-master && \
+    export LANG="C.UTF-8" && \
+    apk update && \
+    apk upgrade && \
+    apk add --no-cache ca-certificates git python3 sudo tzdata bash && \
+    adduser -D -h /home/zulip -u 1000 zulip && \
+    echo 'zulip ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    su - zulip && \
+    git clone https://github.com/zulip/zulip.git
+    cd zulip && \
+    git checkout -b current 9.3 && \
+    cd && \
+    exit && \
+    chown -R zulip:zulip /home/zulip/zulip && \
+    chmod -R u+rwx /home/zulip/zulip && \
+    su - zulip && \
+    cd zulip && \
+    SKIP_VENV_SHELL_WARNING=1 ./tools/provision --build-release-tarball-only
+
+
+# def install_pip_deps() -> None:
+#     # Install crudini
+#     run_as_root(["pipx", "install", "crudini"])
+#     # run this as root : export PATH=/root/.local/bin:$PATH
+#     run_as_root(["export", "PATH=$PATH:/root/.local/bin"])
+#     # run as root : echo 'export "PATH=$PATH:my_path"' >> /etc/profile
+#     run_as_root(["echo", "export 'PATH=$PATH:/root/.local/bin' >> /etc/profile"])
+#     # run as root : pipx ensurepath - to add pipx to PATH
+#     run_as_root(["pipx", "ensurepath"])
+#     # run as root : source ~/.bashrc - to source the bashrc file
+#     # run_as_root(["source", "~/.bashrc"])
 
 
 
+
+# ENV PATH=/root/.local/bin:$PATH
+# RUN echo 'export "PATH=$PATH:my_path"' >> /etc/profile
 
 
 
@@ -164,3 +206,10 @@ CMD ["app:run"]
 
 
   
+
+
+
+
+
+# ENV PATH=/root/.local/bin:$PATH # export PATH=/root/.local/bin:$PATH
+# RUN echo 'export "PATH=$PATH:my_path"' >> /etc/profile
